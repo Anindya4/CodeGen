@@ -5,7 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import {
   ClerkProvider,
   SignInButton,
-  SignUpButton,
+  SignUpButton, 
   SignedIn,
   SignedOut,
   UserButton,
