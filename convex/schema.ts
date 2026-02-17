@@ -1,17 +1,28 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
-
-export default defineSchema ({
-    projects: defineTable({
-        name: v.string(),
-        ownerId: v.string(),
-        importStatus: v.optional(
-            v.union(
-                v.literal("importing"),
-                v.literal("completed"),
-                v.literal("failed"),
-            ),
-        ),
-    }).index("by_owner", ["ownerId"])
-})
+export default defineSchema({
+  projects: defineTable({
+    name: v.string(),
+    ownerId: v.string(),
+    updateAt: v.number(),
+    importStatus: v.optional(
+      v.union(
+        v.literal("importing"),
+        v.literal("completed"),
+        v.literal("failed"),
+      ),
+    ),
+    exportStatus: v.optional(
+      v.union(
+        v.literal("exporting"),
+        v.literal("completed"),
+        v.literal("failed"),
+        v.literal("cancelled"),
+      ),
+    ),
+    exportRepoUrls: v.optional(v.string()),
+  })
+    .index("by_owner", ["ownerId"])
+    .index("by_owner_time", ["ownerId", "updateAt"]),
+});
