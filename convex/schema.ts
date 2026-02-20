@@ -25,4 +25,18 @@ export default defineSchema({
   })
     .index("by_owner", ["ownerId"])
     .index("by_owner_time", ["ownerId", "updateAt"]),
+
+
+    files: defineTable({
+      projectId: v.id("projects"),
+      parentId: v.optional(v.id("files")),
+      name: v.string(),
+      type: v.union(v.literal("file"), v.literal("folder")),
+      content: v.optional(v.string()), //for text files
+      storageId: v.optional(v.id("_storage")), //for binary files likes photos.
+      updateAt: v.number()
+    })
+      .index("by_project", ["projectId"])
+      .index("by_parent", ["parentId"])
+      .index("by_project_parent", ["projectId", "parentId"])
 });
