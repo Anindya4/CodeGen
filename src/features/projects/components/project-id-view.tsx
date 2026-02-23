@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { FaGithub } from "react-icons/fa";
 import { Allotment } from "allotment";
 import { FileExplorer } from "./file-explorer";
+import { EditorView } from "@/features/editor/components/editor-view";
 
 
 
@@ -60,7 +61,7 @@ export const ProjectIdView = ({projectId} : {projectId: Id<"projects">}) => {
           />
           <div className="flex-1 flex justify-end h-full">
             <div className="flex items-center gap-2 h-full px-3 cursor-pointer text-muted-foreground border-r hover:bg-accent/30">
-              <FaGithub className="size-3.5"/>
+              <FaGithub className="size-3.5" />
               <span className="text-sm">Export</span>
             </div>
           </div>
@@ -73,18 +74,18 @@ export const ProjectIdView = ({projectId} : {projectId: Id<"projects">}) => {
             )}
           >
             <Allotment
-            defaultSizes={[DEFAULT_SIDEBAR_WIDTH, DEFAULT_MAIN_SIZE]}
+              defaultSizes={[DEFAULT_SIDEBAR_WIDTH, DEFAULT_MAIN_SIZE]}
             >
               <Allotment.Pane
-              snap
-              maxSize={MAX_SIDEBAR_WIDTH}
-              minSize={MIN_SIDEBAR_WIDTH}
-              preferredSize={DEFAULT_SIDEBAR_WIDTH}
+                snap
+                maxSize={MAX_SIDEBAR_WIDTH}
+                minSize={MIN_SIDEBAR_WIDTH}
+                preferredSize={DEFAULT_SIDEBAR_WIDTH}
               >
-                <FileExplorer projectId={projectId}/>
+                <FileExplorer projectId={projectId} />
               </Allotment.Pane>
               <Allotment.Pane>
-                <p>Editor View</p>
+                <EditorView projectId={projectId} />
               </Allotment.Pane>
             </Allotment>
           </div>
