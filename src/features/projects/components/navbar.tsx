@@ -38,7 +38,7 @@ export const Navbar = ({
 } : {projectId: Id<"projects">}) => {
 
     const project = useProject(projectId);
-    const renameProject = useRenameProjects(projectId)
+    const renameProject = useRenameProjects()
     
     const [isRenaming, setIsRenaming] = useState(false)
     const [name, setName] = useState("")

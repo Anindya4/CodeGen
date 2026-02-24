@@ -1,35 +1,52 @@
-import { useEffect, useRef } from "react";
-import { EditorView, basicSetup } from "codemirror";
-import { javascript } from "@codemirror/lang-javascript";
+import { useEffect, useMemo, useRef } from "react";
+import { EditorView } from "codemirror";
+import { keymap } from "@codemirror/view";
 import { oneDark } from "@codemirror/theme-one-dark"
-
-
-// To make the contents of the editor bigger:
-const customTheme = EditorView.theme({
-  ".cm-content": {
-    fontSize: "18px",
-    lineHeight: "1.6",
-  },
-  ".cm-gutters": {
-    fontSize: "18px",
-  },
-}, { dark: true });
+import { customTheme } from "../extensions/theme";
+import { getLanguageExtension } from "../extensions/lang-extension";
+import { indentWithTab } from "@codemirror/commands"
+import { minimap } from "../extensions/minimap";
+import { indentationMarkers } from "@replit/codemirror-indentation-markers"
+import { customSetup } from "../extensions/custom-setup";
 
 
 
- 
 
-export const CodeEditor = () => {
+interface Props {
+    fileName: string;
+    initialValue?: string;
+    onChange: (value: string) => void;
+}
+
+
+export const CodeEditor = ({fileName, initialValue="", onChange}:Props) => {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null)
+
+    const languageExtension = useMemo(() => {
+        return getLanguageExtension(fileName)
+    },[fileName])
 
     useEffect(() => {
         if (!editorRef.current) return;
 
         const view = new EditorView({
-          doc: "Start document",
+          doc: initialValue,
           parent: editorRef.current,
-          extensions: [basicSetup, oneDark, customTheme, javascript({ typescript: true })],
+          extensions: [
+            customSetup, 
+            oneDark, 
+            customTheme, 
+            languageExtension,
+            keymap.of([indentWithTab]),
+            minimap(),
+            indentationMarkers(),
+            EditorView.updateListener.of((update) => {
+                if (update.docChanged) {
+                    onChange(update.state.doc.toString())
+                }
+            })
+        ],
         });
 
         viewRef.current = view;
@@ -37,7 +54,7 @@ export const CodeEditor = () => {
         return () => {
             view.destroy()
         }
-    },[]);
+    },[languageExtension]);
 
     
 
