@@ -8,6 +8,7 @@ import { indentWithTab } from "@codemirror/commands"
 import { minimap } from "../extensions/minimap";
 import { indentationMarkers } from "@replit/codemirror-indentation-markers"
 import { customSetup } from "../extensions/custom-setup";
+import { suggestion } from "../extensions/suggestion";
 
 
 
@@ -38,6 +39,7 @@ export const CodeEditor = ({fileName, initialValue="", onChange}:Props) => {
             oneDark, 
             customTheme, 
             languageExtension,
+            suggestion(fileName),
             keymap.of([indentWithTab]),
             minimap(),
             indentationMarkers(),
