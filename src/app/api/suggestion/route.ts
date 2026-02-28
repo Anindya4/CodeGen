@@ -1,7 +1,8 @@
 import { generateText, Output } from "ai"
 import { NextResponse } from 'next/server'
-import { google } from "@ai-sdk/google"
+import { openai } from "@ai-sdk/openai"
 import { z } from "zod"
+import { auth } from "@clerk/nextjs/server"
 
 
 
@@ -44,6 +45,16 @@ Your suggestion is inserted immediately after the cursor, so never suggest code 
 
 export async function POST(request: Request) {
     try{
+
+        const { userId } = await auth();
+        if (!userId) {
+            return NextResponse.json(
+                {error: "Unauthorized"},
+                {status: 403}
+            )
+        }
+
+
         const {
             fileName,
             code,
@@ -64,13 +75,13 @@ export async function POST(request: Request) {
           .replace("{currentLine}", currentLine)
           .replace("{previousLines}", previousLines || "")
           .replace("{textBeforeCursor}", textBeforeCursor)
-          .replace("{textAfterCursor}", textAfterCursor)
+          .replace("{textAfterCursor}", textAfterCursor) 
           .replace("{nextLines}", nextLines || "")
           .replace("{lineNumber}", lineNumber.toString());
 
         const { output } = await generateText({
-          model: google("gemini-2.5-flash"),
-          output: Output.object({schema: suggestionSchema}),
+          model: openai("gpt-5-mini"),
+          output: Output.object({ schema: suggestionSchema }),
           prompt,
         });
 
