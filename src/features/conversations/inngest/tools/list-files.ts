@@ -1,24 +1,24 @@
-import { convex } from "@/lib/convex-client-";
-import { createTool } from "@inngest/agent-kit";
 import { z } from "zod";
+import { createTool } from "@inngest/agent-kit";
+
+import { convex } from "@/lib/convex-client-";
+
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 
+interface ListFilesToolOptions {
+  projectId: Id<"projects">;
+  internalKey: string;
+}
 
-interface ListFileToolOptions {
-    internalKey: string;
-    projectId: Id<"projects">
-};
-
-
-
-export const createListFileTool = ({
-  internalKey,
+export const createListFilesTool = ({
   projectId,
-}: ListFileToolOptions) => {
+  internalKey,
+}: ListFilesToolOptions) => {
   return createTool({
     name: "listFiles",
-    description: "List all the files and folders in the project. Returns names, IDs, types, and parentId for each item. Items with parentId: null are at root level. Use the parentId to understand the folder structure - items with the same parentId are in same folder.",
+    description:
+      "List all files and folders in the project. Returns names, IDs, types, and parentId for each item. Items with parentId: null are at root level. Use the parentId to understand the folder structure - items with the same parentId are in the same folder.",
     parameters: z.object({}),
     handler: async (_, { step: toolStep }) => {
       try {
@@ -28,12 +28,12 @@ export const createListFileTool = ({
             projectId,
           });
 
-          //sort folder first
-          const sorted = files.sort((a,b) => {
+          // Sort: folders first, then files, alphabetically
+          const sorted = files.sort((a, b) => {
             if (a.type !== b.type) {
-                return a.type === "folder" ? -1 : 1;
+              return a.type === "folder" ? -1 : 1;
             }
-            return a.name.localeCompare(b.name)
+            return a.name.localeCompare(b.name);
           });
 
           const fileList = sorted.map((f) => ({
@@ -42,11 +42,12 @@ export const createListFileTool = ({
             type: f.type,
             parentId: f.parentId ?? null,
           }));
+
           return JSON.stringify(fileList);
-        });
+        })
       } catch (error) {
-        return `Error listing files: ${error instanceof Error ? error.message : "Unknown Error"}`;
+        return `Error listing files: ${error instanceof Error ? error.message : "Unknown error"}`;
       }
-    },
+    }
   });
 };

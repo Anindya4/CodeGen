@@ -6,24 +6,24 @@ import { convex } from "@/lib/convex-client-";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 
-interface UpdateFileToolOptions {
+interface RenameFileToolOptions {
   internalKey: string;
 }
 
 const paramsSchema = z.object({
   fileId: z.string().min(1, "File ID is required"),
-  content: z.string(),
+  newName: z.string().min(1, "New name is required"),
 });
 
-export const createUpdateFileTool = ({
+export const createRenameFileTool = ({
   internalKey,
-}: UpdateFileToolOptions) => {
+}: RenameFileToolOptions) => {
   return createTool({
-    name: "updateFile",
-    description: "Update the content of an existing file",
+    name: "renameFile",
+    description: "Rename a file or folder",
     parameters: z.object({
-      fileId: z.string().describe("The ID of the file to update"),
-      content: z.string().describe("The new content for the file"),
+      fileId: z.string().describe("The ID of the file or folder to rename"),
+      newName: z.string().describe("The new name for the file or folder"),
     }),
     handler: async (params, { step: toolStep }) => {
       const parsed = paramsSchema.safeParse(params);
@@ -31,7 +31,7 @@ export const createUpdateFileTool = ({
         return `Error: ${parsed.error.issues[0].message}`;
       }
 
-      const { fileId, content } = parsed.data;
+      const { fileId, newName } = parsed.data;
 
       // Validate file exists before running the step
       const file = await convex.query(api.system.getFileById, {
@@ -39,27 +39,22 @@ export const createUpdateFileTool = ({
         fileId: fileId as Id<"files">,
       });
 
-
       if (!file) {
         return `Error: File with ID "${fileId}" not found. Use listFiles to get valid file IDs.`;
       }
 
-      if (file.type === "folder") {
-        return `Error: "${fileId}" is a folder, not a file. You can only update file contents.`;
-      }
-
       try {
-        return await toolStep?.run("update-file", async () => {
-          await convex.mutation(api.system.updateFile, {
+        return await toolStep?.run("rename-file", async () => {
+          await convex.mutation(api.system.renameFile, {
             internalKey,
             fileId: fileId as Id<"files">,
-            content,
+            newName,
           });
 
-          return `File "${file.name}" updated successfully`;
+          return `Renamed "${file.name}" to "${newName}" successfully`;        
         })
       } catch (error) {
-        return `Error update file: ${error instanceof Error ? error.message : "Unknown error"}`;
+        return `Error renaming file: ${error instanceof Error ? error.message : "Unknown error"}`;
       }
     }
   });

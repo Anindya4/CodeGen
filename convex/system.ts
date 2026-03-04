@@ -116,24 +116,47 @@ export const updateMessageStatus = mutation({
 
 
 //used for Agent conversation context
+// export const getRecentMessages = query({
+//   args:{
+//     internalKey: v.string(),
+//     conversationId: v.id("conversations"),
+//     limit: v.optional(v.number())
+//   },
+//   handler: async (ctx, args) => {
+//     validateInternalKey(args.internalKey);
+
+//     const messages = await ctx.db.query("messages")
+//       .withIndex("by_conversation", (q) => 
+//         q.eq("conversationId", args.conversationId)
+//     ).order("asc")
+//      .collect();
+
+//      const limit = args.limit ?? 10;
+//      return messages.slice(-limit);
+//   }
+// });
+
 export const getRecentMessages = query({
-  args:{
+  args: {
     internalKey: v.string(),
     conversationId: v.id("conversations"),
-    limit: v.optional(v.number())
+    limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     validateInternalKey(args.internalKey);
 
-    const messages = await ctx.db.query("messages")
-      .withIndex("by_conversation", (q) => 
-        q.eq("conversationId", args.conversationId)
-    ).order("asc")
-     .collect();
+    const limit = args.limit ?? 10;
 
-     const limit = args.limit ?? 10;
-     return messages.slice(-limit);
-  }
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_conversation", (q) =>
+        q.eq("conversationId", args.conversationId),
+      )
+      .order("desc")
+      .take(limit);
+
+    return messages.reverse(); // restore chronological order
+  },
 });
 
 
@@ -207,7 +230,7 @@ export const updateFile = mutation({
 });
 
 
-// Used for Agent "CreateFiles" tool
+// Used for Agent "CreateFile" tool
 export const createFile = mutation({
   args: {
     internalKey: v.string(),
@@ -306,7 +329,7 @@ export const createFiles = mutation({
 
 
 
-// Used for Agent "CreateFiles" tool
+// Used for Agent "CreateFolder" tool
 export const createFolder = mutation({
   args: {
     internalKey: v.string(),
