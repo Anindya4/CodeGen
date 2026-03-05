@@ -41,11 +41,11 @@ export const createReadFilesTool = ({ internalKey }: ReadFilesToolOptions) => {
               fileId: fileId as Id<"files">,
             });
 
-            if (file && file.content) {
+            if (file) {
               results.push({
                 id: file._id,
                 name: file.name,
-                content: file.content,
+                content: file.content ?? "",
               });
             };
           }

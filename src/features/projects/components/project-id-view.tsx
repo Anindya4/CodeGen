@@ -7,6 +7,7 @@ import { FaGithub } from "react-icons/fa";
 import { Allotment } from "allotment";
 import { FileExplorer } from "./file-explorer";
 import { EditorView } from "@/features/editor/components/editor-view";
+import { PreviewView } from "./preview-view";
 
 
 
@@ -90,16 +91,14 @@ export const ProjectIdView = ({projectId} : {projectId: Id<"projects">}) => {
             </Allotment>
           </div>
 
-          <div className="flex-1 relative">
             <div
               className={cn(
                 "absolute inset-0",
                 activeView === "preview" ? "visible" : "invisible",
               )}
             >
-              <div>Preview</div>
+              <PreviewView projectId={projectId}/>
             </div>
-          </div>
         </div>
       </div>
     );

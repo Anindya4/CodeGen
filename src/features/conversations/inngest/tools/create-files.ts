@@ -72,6 +72,9 @@ export const createCreateFilesTool = ({
               if (parentFolder.type !== "folder") {
                 return `Error: The ID "${parentId}" is a file, not a folder. Use a folder ID as parentId.`;
               }
+              if (parentFolder.projectId !== projectId) {
+                return `Error: Parent folder with ID "${parentId}" does not belong to this project.`;
+              }
             } catch {
               return `Error: Invalid parentId "${parentId}". Use listFiles to get valid folder IDs, or use empty string for root level.`;
             }
