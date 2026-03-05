@@ -1,4 +1,4 @@
-import { success, z } from "zod";
+import { z } from "zod";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { api } from "../../../../convex/_generated/api";

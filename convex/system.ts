@@ -423,7 +423,7 @@ export const deleteFile = mutation({
 
     // Recursively delete file/folder and all descendants
     const deleteRecursive = async (fileId: typeof args.fileId) => {
-      const item = await ctx.db.get(args.fileId);
+      const item = await ctx.db.get(fileId);
       if (!item) return;
 
       // If is a folder delete all children first
