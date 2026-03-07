@@ -33,37 +33,37 @@ export default defineSchema({
     .index("by_owner_time", ["ownerId", "updateAt"]),
 
 
-    files: defineTable({
-      projectId: v.id("projects"),
-      parentId: v.optional(v.id("files")),
-      name: v.string(),
-      type: v.union(v.literal("file"), v.literal("folder")),
-      content: v.optional(v.string()), //for text files
-      storageId: v.optional(v.id("_storage")), //for binary files likes photos.
-      updateAt: v.number()
-    })
-      .index("by_project", ["projectId"])
-      .index("by_parent", ["parentId"])
-      .index("by_project_parent", ["projectId", "parentId"]),
+  files: defineTable({
+    projectId: v.id("projects"),
+    parentId: v.optional(v.id("files")),
+    name: v.string(),
+    type: v.union(v.literal("file"), v.literal("folder")),
+    content: v.optional(v.string()), //for text files
+    storageId: v.optional(v.id("_storage")), //for binary files likes photos.
+    updateAt: v.number()
+  })
+    .index("by_project", ["projectId"])
+    .index("by_parent", ["parentId"])
+    .index("by_project_parent", ["projectId", "parentId"]),
 
-      conversations: defineTable({
-        projectId: v.id("projects"),
-        title: v.string(),
-        updateAt: v.number(),
-      }).index("by_project", ["projectId"]),
+  conversations: defineTable({
+    projectId: v.id("projects"),
+    title: v.string(),
+    updateAt: v.number(),
+  }).index("by_project", ["projectId"]),
 
-      messages: defineTable({
-        conversationId: v.id("conversations"),
-        projectId: v.id("projects"),
-        role: v.union(v.literal("user"), v.literal("assistant")),
-        content: v.string(),
-        status: v.optional(
-          v.union(
-            v.literal("processing"),
-            v.literal("completed"),
-            v.literal("cancelled")
-          )
-        ),
-      }).index("by_conversation", ["conversationId"])
-        .index("by_project_status", ["projectId", "status"]),
+  messages: defineTable({
+    conversationId: v.id("conversations"),
+    projectId: v.id("projects"),
+    role: v.union(v.literal("user"), v.literal("assistant")),
+    content: v.string(),
+    status: v.optional(
+      v.union(
+        v.literal("processing"),
+        v.literal("completed"),
+        v.literal("cancelled")
+      )
+    ),
+  }).index("by_conversation", ["conversationId"])
+    .index("by_project_status", ["projectId", "status"]),
 });

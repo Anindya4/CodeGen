@@ -115,26 +115,6 @@ export const updateMessageStatus = mutation({
 });
 
 
-//used for Agent conversation context
-// export const getRecentMessages = query({
-//   args:{
-//     internalKey: v.string(),
-//     conversationId: v.id("conversations"),
-//     limit: v.optional(v.number())
-//   },
-//   handler: async (ctx, args) => {
-//     validateInternalKey(args.internalKey);
-
-//     const messages = await ctx.db.query("messages")
-//       .withIndex("by_conversation", (q) => 
-//         q.eq("conversationId", args.conversationId)
-//     ).order("asc")
-//      .collect();
-
-//      const limit = args.limit ?? 10;
-//      return messages.slice(-limit);
-//   }
-// });
 
 export const getRecentMessages = query({
   args: {
@@ -451,3 +431,177 @@ export const deleteFile = mutation({
     return args.fileId;
   },
 });
+
+
+//function to cleanup files while importing form github (if any left over remains from last unfinished import)
+export const cleanUpImport = mutation({
+  args: {
+    internalKey : v.string(),
+    projectId: v.id("projects")
+  },
+  handler: async (ctx, args) => {
+    validateInternalKey(args.internalKey);
+
+    const files = await ctx.db
+      .query("files")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    
+    for (const file of files) {
+      if(file.storageId) {
+        await ctx.storage.delete(file.storageId) //deletes file storages
+      }
+
+      await ctx.db.delete(file._id); //deletes file id
+    }
+    return { deleted : files.length}
+      
+  }
+});
+
+
+//for uploading files via inngest's bg job that presents inside of github repo 
+export const generateUploadUrl = mutation({
+  args : {
+    internalKey: v.string()
+  },
+  handler : async(ctx, args) => {
+    validateInternalKey(args.internalKey);
+    return await ctx.storage.generateUploadUrl();
+  }
+});
+
+
+//
+export const createBinaryFile = mutation({
+  args: {
+    internalKey: v.string(),
+    projectId: v.id("projects"),
+    name: v.string(),
+    storageId: v.id("_storage"),
+    parentId: v.optional(v.id("files")),
+  },
+  handler: async (ctx, args) => {
+    validateInternalKey(args.internalKey);
+
+    const files = await ctx.db
+     .query("files")
+     .withIndex("by_project_parent", (q) => q
+        .eq("projectId", args.projectId)
+        .eq("parentId", args.parentId)).collect()
+
+    const existing = files.find(
+      (file) => file.name === args.name && file.type === "file"
+    );
+    if (existing) throw new Error("File already exists")
+    
+    const fileId = await ctx.db.insert("files", {
+      projectId: args.projectId,
+      name: args.name,
+      type: 'file',
+      storageId: args.storageId,
+      parentId: args.parentId,
+      updateAt: Date.now(),
+    });
+    
+    return fileId;
+  }
+});
+
+
+//updating the import status on db
+export const updateImportStatus = mutation({
+  args: {
+    internalKey: v.string(),
+    projectId: v.id("projects"),
+    status: v.optional(
+      v.union(
+        v.literal("importing"),
+        v.literal("completed"),
+        v.literal("failed"),
+      ),
+    ),
+  },
+  handler: async (ctx, args) => {
+    validateInternalKey(args.internalKey);
+    
+    await ctx.db.patch("projects", args.projectId, {
+      importStatus: args.status,
+      updateAt: Date.now(),
+    })
+  }
+});
+
+//updating the export status on db
+export const updateExportStatus = mutation({
+  args: {
+    internalKey: v.string(),
+    projectId: v.id("projects"),
+    status: v.optional(
+      v.union(
+        v.literal("exporting"),
+        v.literal("completed"),
+        v.literal("failed"),
+        v.literal("cancelled"),
+      ),
+    ),
+    repoUrl: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    validateInternalKey(args.internalKey);
+
+    await ctx.db.patch("projects", args.projectId, {
+      exportStatus: args.status,
+      exportRepoUrls: args.repoUrl,
+      updateAt: Date.now(),
+    });
+  },
+});
+
+
+//for the front-end to load the binary files
+export const getProjectFilesWithUrls = query({
+  args : {
+    internalKey : v.string(),
+    projectId: v.id("projects")
+  },
+  handler: async (ctx, args) => {
+    validateInternalKey(args.internalKey);
+    const files = await ctx.db
+      .query("files")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    return await Promise.all(
+      files.map(async (file) => {
+        if(file.storageId) {
+          const url = await ctx.storage.getUrl(file.storageId);
+          return { ...file, storageUrl: url };
+        }
+        return {...file, storageUrl: null};
+      })
+    )
+  }
+});
+
+
+//function to use by inngest while importing from github as bg job
+export const importProject = mutation({
+  args : {
+    internalKey: v.string(),
+    name: v.string(),
+    ownerId: v.string(),
+  },
+  handler : async (ctx, args) => {
+    validateInternalKey(args.internalKey);
+
+    const projectId = await ctx.db.insert("projects", {
+      name: args.name,
+      ownerId: args.ownerId,
+      importStatus: "importing",
+      updateAt: Date.now()
+    })
+
+    return projectId;
+  }
+})
