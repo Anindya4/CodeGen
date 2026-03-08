@@ -191,7 +191,7 @@ export const ExportPopover = ({ projectId }: ExportPopoverProps) => {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          form.handleSubmit;
+          form.handleSubmit();
         }}
       >
         <div className="space-y-4">

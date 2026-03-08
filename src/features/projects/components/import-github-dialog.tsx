@@ -1,5 +1,5 @@
 import ky, { HTTPError } from "ky";
-import { file, z } from "zod";
+import { z } from "zod";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useForm } from "@tanstack/react-form";
@@ -13,7 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Id } from "../../../../convex/_generated/dataModel";
 
@@ -45,7 +44,7 @@ export const ImportGithubDialog = ({
     },
     onSubmit: async ({ value }) => {
       try {
-      const { projectId } = await ky.post("api/github/import", {
+      const { projectId } = await ky.post("/api/github/import", {
         json: {url: value.url},
       }).json<{
       success:  boolean;
