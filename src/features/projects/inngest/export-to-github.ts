@@ -1,6 +1,5 @@
 import ky from "ky";
 import { Octokit } from "octokit";
-import { isBinaryFile } from "isbinaryfile";
 import { NonRetriableError } from "inngest";
 import { convex } from "@/lib/convex-client-";
 import { inngest } from "@/inngest/client";
@@ -25,7 +24,7 @@ export const exportToGithub  = inngest.createFunction(
     cancelOn: [
       {
         event: "github/export.cancel",
-        if : "event.data.projectId === async.data.pro"
+        if : "event.data.projectId == async.data.projectId"
       },
     ],
     onFailure: async ({ event, step }) => {
@@ -46,34 +45,30 @@ export const exportToGithub  = inngest.createFunction(
   {
     event:"github/export.repo"
   }, async ({ event, step }) => {
-    const {
-      projectId,
-      repoName,
-      visibility,
-      description,
-      githubToken,
-    } = event.data as ExportToGithubEvent;
-    
+    const { projectId, repoName, visibility, description, githubToken } =
+      event.data as ExportToGithubEvent;
+
     const internalKey = process.env.CODEGEN_CONVEX_INTERNAL_KEY;
     if (!internalKey) {
-      throw new NonRetriableError("CODEGEN_CONVEX_INTERNAL_KEY is not configured");
-    };
-
+      throw new NonRetriableError(
+        "CODEGEN_CONVEX_INTERNAL_KEY is not configured",
+      );
+    }
 
     //set status to exporting
     await step.run("set-exporting-status", async () => {
       await convex.mutation(api.system.updateExportStatus, {
         internalKey,
         projectId,
-        status: 'exporting',
+        status: "exporting",
       });
     });
-    
+
     const octokit = new Octokit({ auth: githubToken });
 
     //get authenticated user
     const { data: user } = await step.run("get-github-user", async () => {
-      return await octokit.rest.users.getAuthenticated()
+      return await octokit.rest.users.getAuthenticated();
     });
 
     //crate the new  repository with auto_init to have an initial commit
@@ -82,8 +77,8 @@ export const exportToGithub  = inngest.createFunction(
         name: repoName,
         description: description || `Exported from CodeGen`,
         private: visibility === "private",
-        auto_init: true
-      })
+        auto_init: true,
+      });
     });
 
     await step.sleep("wait-for-repo-init", "4s");
@@ -98,13 +93,12 @@ export const exportToGithub  = inngest.createFunction(
       return ref.object.sha;
     });
 
-
     //fetch all projects files with storage URLs (basically the binary files)
     const files = await step.run("fetch-project-files", async () => {
       return (await convex.query(api.system.getProjectFilesWithUrls, {
         internalKey,
         projectId,
-      })) as FileWithUrl[]
+      })) as FileWithUrl[];
     });
 
     //build a map of files IDs to their full paths
@@ -112,16 +106,128 @@ export const exportToGithub  = inngest.createFunction(
       const fileMap = new Map<Id<"files">, FileWithUrl>();
       files.forEach((f) => fileMap.set(f._id, f));
 
-      const getFullPath = (file: FileWithUrl) : string => {
+      const getFullPath = (file: FileWithUrl): string => {
         if (!file.parentId) {
-          return file.name
+          return file.name;
         }
         const parent = fileMap.get(file.parentId);
-        if (!parent) return file.name
+        if (!parent) return file.name;
 
         return `${getFullPath(parent)}/${file.name}`;
-      }
+      };
+
+      const paths: Record<string, FileWithUrl> = {};
+      files.forEach((file) => {
+        paths[getFullPath(file)] = file;
+      });
+
+      return paths;
+    };
+
+    const filePaths = buildFilePaths(files);
+
+    //apply a filer only to files
+    const fileEntries = Object.entries(filePaths).filter(
+      ([, file]) => file.type === "file",
+    );
+
+    if (fileEntries.length === 0) {
+      throw new NonRetriableError("No files to export");
     }
 
+    //Create blobs for each file
+    const treeItems = await step.run("create-blobs", async () => {
+      const items: {
+        path: string;
+        mode: "100644";
+        type: "blob";
+        sha: string;
+      }[] = [];
+
+      for (const [path, file] of fileEntries) {
+        let content: string;
+        let encoding: "utf-8" | "base64" = "utf-8";
+
+        if (file.content !== undefined) {
+          //text file
+          content = file.content;
+        } else if (file.storageUrl) {
+          //Binary file -> fetch and base64 encode
+          const response = await ky.get(file.storageUrl);
+          const buffer = Buffer.from(await response.arrayBuffer());
+          content = buffer.toString("base64");
+          encoding = "base64";
+        } else {
+          //skip file with no content
+          continue;
+        }
+
+        const { data: blob } = await octokit.rest.git.createBlob({
+          owner: user.login,
+          repo: repoName,
+          content,
+          encoding,
+        });
+
+        items.push({
+          path,
+          mode: "100644",
+          type: "blob",
+          sha: blob.sha,
+        });
+      }
+      return items;
+    });
+
+    if (treeItems.length === 0) {
+      throw new NonRetriableError("Failed to created any file blobs");
+    }
+
+    //crate the file tree
+    const { data: tree } = await step.run("create-tree", async () => {
+      return await octokit.rest.git.createTree({
+        owner: user.login,
+        repo: repoName,
+        tree: treeItems,
+      });
+    });
+
+    // Create the commit with the initial commit as parent
+    const { data: commit } = await step.run("create-init-commit", async () => {
+      return await octokit.rest.git.createCommit({
+        owner: user.login,
+        repo: repoName,
+        message: "Initial commit from CodeGen",
+        tree: tree.sha,
+        parents: [initialCommitSha],
+      });
+    });
+
+    // Update the main branch reference to point to our new commit
+    await step.run("update-branch-ref", async () => {
+      return await octokit.rest.git.updateRef({
+        owner: user.login,
+        repo: repoName,
+        ref: "heads/main",
+        sha: commit.sha,
+        force: true,
+      });
+    });
+
+    // Set status to completed with repo URL
+    await step.run("set-completed-status", async () => {
+      await convex.mutation(api.system.updateExportStatus, {
+        internalKey,
+        projectId,
+        status: "completed",
+        repoUrl: repo.html_url,
+      });
+    });
+
+    return {
+      success: true,
+      repoUrl: repo.html_url,
+      filesExported: treeItems.length
+    };
   }
 );

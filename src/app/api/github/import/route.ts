@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     }
 
 
-    const createProject = await convex.mutation(api.system.importProject, {
+    const projectId = await convex.mutation(api.system.importProject, {
         internalKey,
         name: repo,
         ownerId: userId
@@ -68,14 +68,14 @@ export async function POST(request: Request) {
         data: {
             owner,
             repo,
-            createProject,
+            projectId,
             githubToken
         }
     });
 
     return NextResponse.json({
       success: true,
-      createProject,
+      projectId,
       eventId: event.ids[0],
     });
 }

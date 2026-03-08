@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { inngest } from "@/inngest/client";
-import { api } from "../../../../../convex/_generated/api";
 import { convex } from "@/lib/convex-client-";
-import { Id } from "../../../../../convex/_generated/dataModel";
+import { Id } from "../../../../../../convex/_generated/dataModel";
+import { api } from "../../../../../../convex/_generated/api";
+
+
 
 const requestSchema = z.object({
   projectId: z.string(),
@@ -28,23 +29,18 @@ export async function POST(request: Request) {
     );
   }
 
-  const event = await inngest.send({
-    name: "github/export.cancel",
-    data: {
-      projectId,
-    },
-  });
+  
 
-  //Update status to cancelled
+  //Clear export status
   await convex.mutation(api.system.updateExportStatus, {
     internalKey,
     projectId: projectId as Id<"projects">,
-    status: "cancelled",
+    status: undefined,
+    repoUrl: undefined,
   });
 
   return NextResponse.json({
     success: true,
     projectId,
-    eventId: event.ids[0],
   });
 }
