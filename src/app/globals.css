@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+/* @import "streamdown/styles.css"; */
 
 @custom-variant dark (&:is(.dark *));
 
@@ -155,6 +156,87 @@
     }
   }
 }
+
+/* Streamdown / Markdown typography styles for AI messages */
+/* .group-\[\.is-assistant\] {
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold text-foreground mt-5 mb-2 leading-tight;
+  }
+
+  h1 { @apply text-2xl; }
+  h2 { @apply text-xl; }
+  h3 { @apply text-lg; }
+  h4 { @apply text-base; }
+
+  p {
+    @apply my-2 leading-relaxed;
+  }
+
+  ul, ol {
+    @apply my-2 pl-6;
+  }
+
+  ul {
+    @apply list-disc;
+  }
+
+  ol {
+    @apply list-decimal;
+  }
+
+  li {
+    @apply my-1;
+  }
+
+  li > ul, li > ol {
+    @apply my-0;
+  }
+
+  code:not(pre code) {
+    @apply bg-muted text-foreground rounded px-1.5 py-0.5 text-[0.85em];
+  }
+
+  pre {
+    @apply my-3 rounded-lg bg-muted p-4 overflow-x-auto;
+  }
+
+  pre code {
+    @apply bg-transparent p-0 text-sm;
+  }
+
+  blockquote {
+    @apply my-3 border-l-4 border-muted-foreground/30 pl-4 italic text-muted-foreground;
+  }
+
+  hr {
+    @apply my-4 border-border;
+  }
+
+  a {
+    @apply text-primary underline underline-offset-2;
+  }
+
+  table {
+    @apply my-3 w-full border-collapse;
+  }
+
+  th, td {
+    @apply border border-border px-3 py-2 text-left text-sm;
+  }
+
+  th {
+    @apply bg-muted font-semibold;
+  }
+
+  strong {
+    @apply font-semibold;
+  }
+
+  em {
+    @apply italic;
+  }
+} */
 
 ::-webkit-scrollbar {
   @apply w-2.5 h-2.5;

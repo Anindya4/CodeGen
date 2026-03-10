@@ -13,27 +13,25 @@ import {
   ExternalLinkIcon,
   LoaderIcon,
   XCircleIcon,
-} from "lucide-react"
+} from "lucide-react";
 import {
   Popover,
   PopoverContent,
-  PopoverTrigger
-} from "@/components/ui/popover"
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
-} from "@/components/ui/select"
+  SelectValue,
+} from "@/components/ui/select";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Textarea } from "@/components/ui/textarea";
 import { useProject } from "../hooks/use-projects";
 import { FaGithub } from "react-icons/fa";
 import Link from "next/link";
-
-
 
 const formSchema = z.object({
   repoName: z
@@ -48,15 +46,13 @@ const formSchema = z.object({
   description: z.string().max(350, "Description is too long"),
 });
 
-
 interface ExportPopoverProps {
-  projectId: Id<"projects">
+  projectId: Id<"projects">;
 }
-
 
 export const ExportPopover = ({ projectId }: ExportPopoverProps) => {
   const project = useProject(projectId);
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpen] = React.useState(false);
   const { openUserProfile } = useClerk();
 
   const exportStatus = project?.exportStatus;
@@ -65,7 +61,7 @@ export const ExportPopover = ({ projectId }: ExportPopoverProps) => {
   const form = useForm({
     defaultValues: {
       repoName: project?.name?.replace(/[^a-zA-Z0-9._-]/g, "-") ?? "",
-      visibility : "private" as "public" | "private",
+      visibility: "private" as "public" | "private",
       description: "",
     },
     validators: {
@@ -73,21 +69,30 @@ export const ExportPopover = ({ projectId }: ExportPopoverProps) => {
     },
     onSubmit: async ({ value }) => {
       try {
-        await ky
-          .post("api/github/export", {
-            json: {
-              projectId,
-              repoName: value.repoName,
-              visibility: value.visibility,
-              description: value.description,
-            },
-          })
+        await ky.post("/api/github/export", {
+          json: {
+            projectId,
+            repoName: value.repoName,
+            visibility: value.visibility,
+            description: value.description,
+          },
+        });
 
         toast.success("Stated exporting...");
       } catch (error) {
         if (error instanceof HTTPError) {
           const body = await error.response.json<{ error: string }>();
-          if (body?.error?.includes("Github not connected")) {
+          if (body.error?.includes("Pro plan is required")) {
+            toast.error("Upgrade to pro plan for accessing this feature", {
+              action: {
+                label: "Upgrade",
+                onClick: () => openUserProfile(),
+              },
+            });
+            setOpen(false);
+            return;
+          }
+          if (body.error?.includes("Github not connected")) {
             toast.error("GitHub is not connected", {
               action: {
                 label: "Connect",
@@ -104,61 +109,62 @@ export const ExportPopover = ({ projectId }: ExportPopoverProps) => {
   });
 
   const handleCancelExport = async () => {
-    await ky.post("api/github/export/cancel", {
-      json : { projectId }
+    await ky.post("/api/github/export/cancel", {
+      json: { projectId },
     });
-  }; 
+  };
 
   const handleRestExport = async () => {
-    await ky.post("api/github/export/reset", {
+    await ky.post("/api/github/export/reset", {
       json: { projectId },
     });
     setOpen(false);
   };
 
-
   const renderContent = () => {
     if (exportStatus === "exporting") {
       return (
         <div className="flex flex-col items-center gap-3">
-          <LoaderIcon className="size-6 animate-spin text-muted-foreground"/>
-          <p className="text-sm text-muted-foreground">Exporting to GitHub...</p>
+          <LoaderIcon className="size-6 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            Exporting to GitHub...
+          </p>
           <Button
-          size="sm"
-          variant="outline"
-          className="w-full"
-          onClick={handleCancelExport}
+            size="sm"
+            variant="outline"
+            className="w-full"
+            onClick={handleCancelExport}
           >
             Cancel
           </Button>
         </div>
-      )
+      );
     }
 
     if (exportStatus === "completed" && exportRepoUrls) {
       return (
         <div className="flex flex-col items-center gap-3">
           <CheckCircle2Icon className="size-6 text-emerald-500" />
-          <p className="text-sm font-medium">
-            Repository created
-          </p>
+          <p className="text-sm font-medium">Repository created</p>
           <p className="text-xs text-muted-foreground text-center">
             Project successfully exported to GitHub.
           </p>
           <div className="flex flex-col w-full gap-2">
-            <Button>
+            <Button size="sm" className="w-full" asChild>
               <Link
-              href={exportRepoUrls} target="_blank" rel="noopener noreferrer"
+                href={exportRepoUrls}
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                <ExternalLinkIcon className="size-4 mr-1"/>
+                <ExternalLinkIcon className="size-4 mr-1" />
                 View on GitHub
               </Link>
             </Button>
             <Button
-            size="sm"
-            variant="outline"
-            className="w-full"
-            onClick={handleRestExport}
+              size="sm"
+              variant="outline"
+              className="w-full"
+              onClick={handleRestExport}
             >
               Close
             </Button>
@@ -273,10 +279,10 @@ export const ExportPopover = ({ projectId }: ExportPopoverProps) => {
           >
             {([canSubmit, isSubmitting]) => (
               <Button
-              type="submit"
-              size="sm"
-              className="w-full"
-              disabled={!canSubmit || isSubmitting}
+                type="submit"
+                size="sm"
+                className="w-full"
+                disabled={!canSubmit || isSubmitting}
               >
                 {isSubmitting ? "Creating..." : "Create Repository"}
               </Button>
@@ -285,10 +291,8 @@ export const ExportPopover = ({ projectId }: ExportPopoverProps) => {
         </div>
       </form>
     );
-  }
+  };
 
-
-   
   const getStatusIcon = () => {
     if (exportStatus === "exporting") {
       return <LoaderIcon className="size-3.5 animate-spin" />;

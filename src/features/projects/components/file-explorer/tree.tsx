@@ -35,9 +35,9 @@ export const Tree = ({
     const [isRenaming, setIsRenaming] = useState(false)
     const [creating, setCreating] = useState<"file" | "folder" | null>(null)
 
-    const renameFile = useRenameFile()
-    const deleteFile = useDeleteFile()
-    const createFile = useCreateFile()
+    const renameFile = useRenameFile({ projectId, parentId: item._id });
+    const deleteFile = useDeleteFile({projectId, parentId: item._id})
+    const createFile = useCreateFile();
     const createFolder = useCreateFolder()
 
 

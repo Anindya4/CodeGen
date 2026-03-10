@@ -74,6 +74,8 @@ export const updateMessageContent = mutation({
       content: args.content,
       status: "completed" as const,
     });
+
+    return { messageId: args.messageId, status: "completed" };
   },
 });
 
@@ -603,5 +605,35 @@ export const importProject = mutation({
     })
 
     return projectId;
+  }
+});
+
+
+//
+export const createProjectWithConversation = mutation({
+  args: {
+    internalKey: v.string(),
+    projectName: v.string(),
+    conversationTitle : v.string(),
+    ownerId: v.string()
+  },
+  handler: async (ctx, args) => {
+    validateInternalKey(args.internalKey)
+
+    const now = Date.now();
+
+    const projectId = await ctx.db.insert("projects", {
+      name: args.projectName,
+      ownerId: args.ownerId,
+      updateAt: now,
+    });
+
+    const conversationId = await ctx.db.insert("conversations", {
+      projectId,
+      title: args.conversationTitle,
+      updateAt: now,
+    });
+
+    return { projectId, conversationId }
   }
 })

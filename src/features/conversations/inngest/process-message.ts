@@ -89,7 +89,6 @@ export const processMessage = inngest.createFunction(
     });
 
     let systemPrompt = CODING_AGENT_SYSTEM_PROMPT;
-
     // filter out the current message from recent messages and also empty messages if any
     const contextMessages = recentMessages.filter(
       (msg) => msg._id !== messageId && msg.content.trim() !== "",
@@ -97,10 +96,10 @@ export const processMessage = inngest.createFunction(
 
     if (contextMessages.length > 0) {
       const historyText = contextMessages
-        .map((msg) => `${msg.role.toUpperCase()}: ${msg.content}`)
-        .join("\n\n");
+        .map((msg) => `[${msg.role.toUpperCase()}]: ${msg.content}`)
+        .join("\n\n---\n\n");
 
-      systemPrompt += `\n\n## Conversation History:\n${historyText}\n\n## Current Request:\nRespond only to the user's latest message above. Use the conversation history for context but do not repeat previous responses verbatim.`;
+      systemPrompt += `\n\n<conversation_history>\n${historyText}\n</conversation_history>\n\n<current_turn_instruction>\nThe above is previous conversation history for context only. Respond ONLY to the user's new message. Do not repeat or rehash previous responses.\n</current_turn_instruction>`;
     }
 
     // Generate conversation title if the name is default conversation (which is NEW CONVERSATION)
@@ -172,59 +171,54 @@ export const processMessage = inngest.createFunction(
     const network = createNetwork({
       name: "codegen-network",
       agents: [codingAgent],
-      maxIter: 20,
+      maxIter: 15,
       router: ({ network }) => {
         const lastResult = network.state.results.at(-1);
         if (!lastResult) return codingAgent;
-        const hasTextResponse = lastResult?.output.some(
-          (m) => m.type === "text" && m.role === "assistant",
-        );
+
         const hasToolCalls = lastResult.output.some(
           (m) => m.type === "tool_call",
         );
 
-        if (hasTextResponse && !hasToolCalls) {
-          return undefined;
+        // If the agent made tool calls, continue so it can process results
+        if (hasToolCalls) {
+          return codingAgent;
         }
 
-        return codingAgent;
+        // Agent produced a text response with no tool calls — done
+        return undefined;
       },
     });
 
     // Run the Agent:
     const result = await network.run(message);
 
-    // DEBUG — remove after fixing
-    // console.log(
-    //   "ALL OUTPUTS:",
-    //   JSON.stringify(
-    //     result.state.results.map((r) => ({
-    //       agent: r.agentName,
-    //       outputs: r.output.map((o) => ({ type: o.type, role: o.role })),
-    //     })),
-    //     null,
-    //     2,
-    //   ),
-    // );
-    // extract the last message of assistant
-    const textMessage = result.state.results
+    // Extract all text messages from the agent across all iterations
+    const allTextMessages = result.state.results
       .flatMap((r) => r.output)
-      .filter((m) => m.type === "text" && m.role === "assistant")
-      .at(-1);
+      .filter((m) => m.type === "text" && m.role === "assistant");
+
+    // Get the last text message (the final response)
+    const textMessage = allTextMessages.at(-1);
 
     let assistantResponse =
-      "I processed your request. Let me know if you needed anything else!";
+      "I processed your request. Let me know if you need anything else!";
 
     if (textMessage?.type === "text") {
-      assistantResponse =
+      const content =
         typeof textMessage.content === "string"
           ? textMessage.content
           : textMessage.content.map((c) => c.text).join("");
+
+      // Only use the extracted content if it's not empty
+      if (content.trim()) {
+        assistantResponse = content;
+      }
     }
 
     //Update the assistant message with the response => also set status to "completed"
     await step.run("update-assistant-message", async () => {
-      await convex.mutation(api.system.updateMessageContent, {
+      return await convex.mutation(api.system.updateMessageContent, {
         internalKey,
         messageId,
         content: assistantResponse,
