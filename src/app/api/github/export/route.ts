@@ -15,10 +15,14 @@ const requestSchema = z.object({
 
 
 export async function POST(request:Request) {
-  const { userId } = await auth();
+  const { userId, has } = await auth();
   if (!userId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const hasPro = has({plan: "pro"});
+  if (!hasPro){
+      return NextResponse.json({error: "Pro plan is required for this feature"}, {status: 403})
+  }
   const body = await request.json();
   const { projectId, repoName, visibility, description } = requestSchema.parse(body);
 
