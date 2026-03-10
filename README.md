@@ -155,7 +155,7 @@ codegen/
 ### 1. Clone and install
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/Anindya4/CodeGen
 cd codegen
 npm install
 ```
