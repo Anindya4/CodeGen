@@ -42,7 +42,7 @@ export const NewProjectDialog = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (message: PromptInputMessage) => {
-    if (!message.text) return;
+    if (!message.text.trim()) return;
 
     setIsSubmitting(true);
 
@@ -56,7 +56,7 @@ export const NewProjectDialog = ({
       setInput("");
       router.push(`/projects/${projectId}`)
     } catch {
-      toast.error("Unable to crate projects");
+      toast.error("Unable to create projects");
     } finally {
       setIsSubmitting(false);
     }

@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-/* @import "streamdown/styles.css"; */
+@import "streamdown/styles.css";
+
+@source "../../node_modules/streamdown";
+@source "../../node_modules/@streamdown";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -237,6 +240,11 @@
     @apply italic;
   }
 } */
+
+/* Fix horizontal scroll for streamdown code blocks */
+[data-streamdown="code-block-body"] {
+  overflow-x: auto !important;
+}
 
 ::-webkit-scrollbar {
   @apply w-2.5 h-2.5;
