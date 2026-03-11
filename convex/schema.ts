@@ -66,4 +66,10 @@ export default defineSchema({
     ),
   }).index("by_conversation", ["conversationId"])
     .index("by_project_status", ["projectId", "status"]),
+
+  userUsage: defineTable({
+    userId : v.string(),
+    weekStartDate: v.number(),
+    callCount: v.number()
+  }).index("by_user_week",["userId", "weekStartDate"] )
 });

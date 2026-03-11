@@ -15,8 +15,10 @@ const requestSchema = z.object({
 });
 
 
+const FREE_CALL_LIMIT = 5;
+
 export async function POST(request: Request) {
-    const { userId } = await auth();
+    const { userId, has } = await auth();
 
     if (!userId) {
         return NextResponse.json({error: "Unauthorized"}, {status: 401})
@@ -27,6 +29,22 @@ export async function POST(request: Request) {
             {error: "Internal Key not configured"},
             {status: 500}
         )
+    }
+
+    const hasPro = has({ plan: "pro" });
+
+    if (!hasPro) {
+        const { callCount } = await convex.query(api.system.getUserWeeklyUsage, {
+            userId,
+            internalKey,
+        });
+
+        if (callCount >= FREE_CALL_LIMIT) {
+            return NextResponse.json(
+                { error: "limit_reached", remaining: 0 },
+                { status: 429 }
+            );
+        }
     }
 
     const body = await request.json();
@@ -108,12 +126,20 @@ export async function POST(request: Request) {
         }
     })
 
+    let remaining: number | null = null;
+    if (!hasPro) {
+        const newCount = await convex.mutation(api.system.incrementUserUsage, {
+            userId,
+            internalKey,
+        });
+        remaining = Math.max(0, FREE_CALL_LIMIT - newCount);
+    }
 
     return NextResponse.json({
-        success: true, 
+        success: true,
         eventId: event.ids[0],
-        messageId: assistantMessageId
-    }
-    )
+        messageId: assistantMessageId,
+        remaining,
+    })
 
 }

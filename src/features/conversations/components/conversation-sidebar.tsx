@@ -1,4 +1,4 @@
-import  ky  from "ky";
+import ky, { HTTPError } from "ky";
 import { toast } from "sonner";
 import { useState } from "react";
 import {
@@ -40,6 +40,7 @@ import {
 import { Id } from "../../../../convex/_generated/dataModel";
 import { DEFAULT_CONVERSATION_TITLE } from "../constants";
 import { PastConversationDialog } from "./convo-history-dialog";
+import { useClerk } from "@clerk/nextjs";
 
 
 
@@ -53,7 +54,7 @@ interface ConversationSidebarProps {
 export const ConversationSidebar = ({
     projectId,
 }: ConversationSidebarProps) => {
-    
+    const { openUserProfile } = useClerk();
     const [input, setInput] = useState("");
 
     const [selectedConversationId, setSelectConversationId] = useState<Id<"conversations"> | null>(null);
@@ -118,14 +119,31 @@ export const ConversationSidebar = ({
         
         // Trigger ingest functions via API
         try {
-            await ky.post("/api/messages", {
+            const res = await ky.post("/api/messages", {
                 json: {
                     conversationId,
                     message: message.text
                 },
-            });
-        } catch {
-            toast.error("Failed to send message")
+            }).json<{ remaining: number | null }>();
+
+            if (res.remaining !== null) {
+                if (res.remaining === 0) {
+                    toast.warning("You've used all 5/5 free calls this week. Upgrade to Pro for unlimited access.");
+                } else {
+                    toast.info(`You have ${res.remaining}/5 free calls remaining this week.`);
+                }
+            }
+        } catch (error) {
+            if (error instanceof HTTPError && error.response.status === 429) {
+                toast.error("Weekly limit reached. Upgrade to Pro for unlimited access.", {
+                  action : {
+                    label: "Upgrade",
+                    onClick : () => openUserProfile()
+                  }
+                });
+            } else {
+                toast.error("Failed to send message");
+            }
         }
 
         setInput("")

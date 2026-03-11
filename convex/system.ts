@@ -636,4 +636,76 @@ export const createProjectWithConversation = mutation({
 
     return { projectId, conversationId }
   }
-})
+});
+
+
+// Returns the start of the current ISO week (Monday 00:00:00 UTC) as a timestamp
+const getCurrentWeekStart = (): number => {
+  const now = new Date();
+  const day = now.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const daysToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(now);
+  monday.setUTCDate(now.getUTCDate() + daysToMonday);
+  monday.setUTCHours(0, 0, 0, 0);
+  return monday.getTime();
+};
+
+// Returns current week's call count for the user (0 if no calls yet this week)
+export const getUserWeeklyUsage = query({
+  args: {
+    userId: v.string(),
+    internalKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    validateInternalKey(args.internalKey);
+
+    const weekStart = getCurrentWeekStart();
+
+    const record = await ctx.db
+      .query("userUsage")
+      .withIndex("by_user_week", (q) =>
+        q.eq("userId", args.userId).eq("weekStartDate", weekStart),
+      )
+      .unique();
+
+    return {
+      callCount: record?.callCount ?? 0,
+      weekStart,
+    };
+  },
+});
+
+// Increments the call count for the current week, creating the record if needed
+// Returns the updated call count
+export const incrementUserUsage = mutation({
+  args: {
+    userId: v.string(),
+    internalKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    validateInternalKey(args.internalKey);
+
+    const weekStart = getCurrentWeekStart();
+
+    const existing = await ctx.db
+      .query("userUsage")
+      .withIndex("by_user_week", (q) =>
+        q.eq("userId", args.userId).eq("weekStartDate", weekStart),
+      )
+      .unique();
+
+    if (existing) {
+      const newCount = existing.callCount + 1;
+      await ctx.db.patch(existing._id, { callCount: newCount });
+      return newCount;
+    }
+
+    await ctx.db.insert("userUsage", {
+      userId: args.userId,
+      weekStartDate: weekStart,
+      callCount: 1,
+    });
+
+    return 1;
+  },
+});

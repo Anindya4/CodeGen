@@ -86,3 +86,7 @@ export const useRenameProjects = () => {
 export const useUpdateProjectSettings = () => {
     return useMutation(api.projects.updateSettings)
 }
+
+export const useWeeklyUsage = () => {
+    return useQuery(api.projects.getMyWeeklyUsage, {});
+}

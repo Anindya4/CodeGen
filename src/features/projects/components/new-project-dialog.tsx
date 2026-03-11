@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import ky from 'ky'
+import ky, { HTTPError } from 'ky'
 
 import {
   Dialog,
@@ -24,6 +24,8 @@ import {
 } from "@/components/ai-elements/prompt-input";
 
 import { Id } from "../../../../convex/_generated/dataModel";
+import { useWeeklyUsage } from "../hooks/use-projects";
+import { useClerk } from "@clerk/nextjs";
 
 
 interface NewProjectDialogProps {
@@ -40,23 +42,50 @@ export const NewProjectDialog = ({
   const router = useRouter();
   const [input, setInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const usage = useWeeklyUsage();
+  const { openUserProfile } = useClerk();
   const handleSubmit = async (message: PromptInputMessage) => {
     if (!message.text.trim()) return;
+
+    if (usage && usage.remaining === 0) {
+      toast.error(
+        "You've used all 5 free calls this week. Upgrade to Pro for unlimited access.",
+        {
+          action: {
+            label: "Upgrade",
+            onClick: () => openUserProfile(),
+          },
+        },
+      );
+      onOpenChange(false)
+      setInput("")
+      return;
+    }
 
     setIsSubmitting(true);
 
     try {
-      const { projectId } = await ky.post("/api/projects/create-with-prompts", {
+      const res = await ky.post("/api/projects/create-with-prompts", {
         json: { prompt: message.text.trim() },
-      }).json<{ projectId: Id<"projects"> }>();
+      }).json<{ projectId: Id<"projects">; remaining: number | null }>();
 
       toast.success("Project Created");
       onOpenChange(false);
       setInput("");
-      router.push(`/projects/${projectId}`)
-    } catch {
-      toast.error("Unable to create projects");
+      router.push(`/projects/${res.projectId}`)
+    } catch (error) {
+      if (error instanceof HTTPError && error.response.status === 429) {
+        toast.error("You've used all 5 free calls this week. Upgrade to Pro for unlimited access.",
+          {
+            action : {
+              label: "Upgrade",
+              onClick: () => openUserProfile()
+            }
+          }
+        );
+      } else {
+        toast.error("Unable to create projects");
+      }
     } finally {
       setIsSubmitting(false);
     }
