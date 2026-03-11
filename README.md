@@ -12,7 +12,7 @@
 
 ![CodeGen Interface](images/frontpage.png)
 ---
-##  Live URL: [CodeGen](codegenlive.vercel.app)
+##  Live URL: [CodeGen](https://codegenlive.vercel.app)
 
 
 
